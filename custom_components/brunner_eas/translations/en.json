@@ -1,0 +1,91 @@
+{
+  "title": "BRUNNER Combustion Control",
+  "config": {
+    "abort": {
+      "already_configured": "The integration has already been configured."
+    },
+    "step": {
+      "user": {
+        "data": {},
+        "description": "This custom integration adds support for BRUNNER combustion control (Elektronische Abbrandsteuerung EAS 3) to Home Assistant."
+      },
+      "dhcp": {
+        "data": {},
+        "description": "Your EAS3 device should be discovered automatically if it is on the same local network as Home Assistant."
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "door": {
+        "name": "Door"
+      },
+      "eco": {
+        "name": "Eco mode"
+      },
+      "reloading_note": {
+        "name": "Reload wood",
+        "state": {
+          "on": "Now",
+          "off": "Don't"
+        }
+      },
+      "splus": {
+        "name": "Prolonged combustion mode (S+)"
+      }
+    },
+    "sensor": {
+      "combustion": {
+        "name": "Combustion",
+        "state": {
+          "unknown": "Unknown",
+          "door_open": "Door open",
+          "stage1": "Stage 1",
+          "stage2": "Stage 2",
+          "stage3": "Stage 3",
+          "stage4": "Stage 4",
+          "embers": "Embers",
+          "rest": "Rest",
+          "ended": "Ended"
+        }
+      },
+      "display_brightness": {
+        "name": "Display brightness"
+      },
+      "error_state": {
+        "name": "Errors",
+        "state": {
+          "combustion_error": "Combustion error",
+          "fire_starting_and_combustion_error": "Fire starting and combustion errors",
+          "unknown": "Unknown",
+          "none": "None",
+          "fire_starting_error": "Fire starting error"
+        }
+      },
+      "ip_address": {
+        "name": "IP address"
+      },
+      "reloading_indications": {
+        "name": "Reloading hints",
+        "state": {
+          "off": "None",
+          "symbols": "Symbols only",
+          "symbols_and_beeps": "Symbols and sounds",
+          "symbols_and_blinking": "Symbols and blinking arrow",
+          "symbols_beeps_and_blinking": "Symbols, sounds and blinking arrow"
+        }
+      },
+      "temperature": {
+        "name": "Temperature"
+      },
+      "tone_loudness": {
+        "name": "Sound volume",
+        "state": {
+          "silent": "Silent",
+          "medium": "Medium",
+          "loud": "Loud"
+        }
+      }
+    }
+  }
+}

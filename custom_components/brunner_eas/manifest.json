@@ -1,0 +1,20 @@
+{
+  "domain": "brunner_eas",
+  "name": "BRUNNER EAS",
+  "codeowners": [
+    "@Manschitz"
+  ],
+  "config_flow": true,
+  "dependencies": [],
+  "dhcp": [
+    {
+      "macaddress": "E0E2E6*"
+    }
+  ],
+  "documentation": "https://github.com/Manschitz/brunner-eas-integration",
+  "integration_type": "device",
+  "iot_class": "local_push",
+  "issue_tracker": "https://github.com/Manschitz/brunner-eas-integration/issues",
+  "single_config_entry": true,
+  "version": "1.0.0"
+}

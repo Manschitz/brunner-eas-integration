@@ -1,0 +1,8 @@
+{
+    "filename": "hacs-brunner-eas.zip",
+    "hide_default_branch": true,
+    "homeassistant": "2026.2.0",
+    "name": "BRUNNER Combustion Control",
+    "render_readme": true,
+    "zip_release": true
+}

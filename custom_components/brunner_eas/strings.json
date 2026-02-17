@@ -1,0 +1,22 @@
+{
+  "config": {
+    "error": {
+      "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]"
+    },
+    "abort": {
+      "already_in_progress": "[%key:common::config_flow::abort::already_in_progress%]",
+      "already_configured": "[%key:common::config_flow::abort::already_configured_device%]",
+      "no_devices_found": "[%key:common::config_flow::abort::no_devices_found%]"
+    },
+    "step": {
+      "user": {
+        "data": {},
+        "description": "This custom integration adds support for BRUNNER combustion control (Elektronische Abbrandsteuerung EAS 3) to Home Assistant."
+      },
+      "dhcp": {
+        "data": {},
+        "description": "Your EAS3 device should be discovered automatically if it is on the same local network as Home Assistant."
+      }
+    }
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "title": "BRUNNER Abbrandsteuerung",
+  "config": {
+    "abort": {
+      "already_configured": "Die Integration ist bereits konfiguriert."
+    },
+    "step": {
+      "user": {
+        "data": {},
+        "description": "Diese Integration ermöglicht die Einbindung der elektronischen Abbrandsteuerung EAS 3 von BRUNNER in Home Assistant."
+      },
+      "dhcp": {
+        "data": {},
+        "description": "Die EAS3 sollte automatisch erkannt werden, sofern das Gerät sich im gleichen lokalen Netzwerk wie Home Assistant befindet."
+      }
+    }
+  },
+  "entity": {
+    "binary_sensor": {
+      "door": {
+        "name": "Ofentür"
+      },
+      "eco": {
+        "name": "Öko-Betrieb"
+      },
+      "reloading_note": {
+        "name": "Holz nachlegen",
+        "state": {
+          "on": "Jetzt",
+          "off": "Nein"
+        }
+      },
+      "splus": {
+        "name": "Verlängerter Abbrand (S+)"
+      }
+    },
+    "sensor": {
+      "combustion": {
+        "name": "Abbrand",
+        "state": {
+          "unknown": "Unbekannt",
+          "door_open": "Tür geöffnet",
+          "stage1": "Stufe 1",
+          "stage2": "Stufe 2",
+          "stage3": "Stufe 3",
+          "stage4": "Stufe 4",
+          "embers": "Glut",
+          "rest": "Ruhe",
+          "ended": "Beendet"
+        }
+      },
+      "display_brightness": {
+        "name": "Displayhelligkeit"
+      },
+      "error_state": {
+        "name": "Fehler",
+        "state": {
+          "combustion_error": "Heizfehler",
+          "fire_starting_and_combustion_error": "An-/Heizfehler",
+          "unknown": "Unbekannt",
+          "none": "Keine",
+          "fire_starting_error": "Anheizfehler"
+        }
+      },
+      "ip_address": {
+        "name": "IP-Adresse"
+      },
+      "reloading_indications": {
+        "name": "Nachlegehinweise",
+        "state": {
+          "off": "Keine",
+          "symbols": "Nur Symbole",
+          "symbols_and_beeps": "Symbole und Hinweistöne",
+          "symbols_and_blinking": "Symbole und blinkender Pfeil",
+          "symbols_beeps_and_blinking": "Symbole, Töne und blinkender Pfeil"
+        }
+      },
+      "temperature": {
+        "name": "Temperatur"
+      },
+      "tone_loudness": {
+        "name": "Lautstärke Hinweise",
+        "state": {
+          "silent": "Stumm",
+          "medium": "Leise",
+          "loud": "Laut"
+        }
+      }
+    }
+  }
+}
