@@ -45,7 +45,7 @@ The work is based on the findings by [sharky-os](https://github.com/sharky-os) a
 
 ## Installation and Configuration
 
-As this integration is currently not part of Home Assistant Core, you have to download it first into your Home Assistant installation. To download it via HACS, click the following button to open the download page for this integration in HACS.
+As this integration is currently not part of Home Assistant Core, you have to download it first into your Home Assistant installation. Click the following button to open the download page in HACS.
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Manschitz&repository=brunner-eas-integration&category=integration)
 
@@ -54,7 +54,7 @@ After a restart of Home Assistant, this integration is configurable via "Add Int
 [![Open your Home Assistant instance and start setting up this integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=brunner_eas)
 
 [hacs]: https://github.com/hacs/integration
-[hacs-shield]: https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge&logo=homeassistantcommunitystore
+[hacs-shield]: https://img.shields.io/badge/HACS-Default-orange.svg?style=for-the-badge&logo=homeassistantcommunitystore
 [license-shield]: https://img.shields.io/github/license/Manschitz/brunner-eas-integration?style=for-the-badge&color=blue&logo=agpl
 [brunner-eas]: https://www.brunner.de/produkt/elektronische-abbrandsteuerung-eas-3/
 [releases]: https://github.com/Manschitz/brunner-eas-integration/releases
