@@ -5,7 +5,7 @@
 [![HACS Workflow Status][hacs-validation-shield]][hacs-validation]
 [![Hassfest Workflow Status][hassfest-validation-shield]][hassfest-validation]
 
-This custom integration adds support for BRUNNER combustion control ([Elektronische Abbrandsteuerung EAS 3][brunner-eas]) to Home Assistant.
+This custom integration adds support for the BRUNNER combustion control system ([Elektronische Abbrandsteuerung EAS 3][brunner-eas]) to Home Assistant.
 
 Sensors available:
 
@@ -30,7 +30,7 @@ Supported languages:
 - English
 - Deutsch
 
-If you encounter any problems, please file an issue at the integration's [issue tracker](https://github.com/Manschitz/brunner-eas-integration/issues).
+If you encounter any problems, please file an issue at the [issue tracker](https://github.com/Manschitz/brunner-eas-integration/issues).
 
 ## Disclaimer
 
@@ -50,7 +50,7 @@ This integration is available through the Home Assistant Marketplace:
 
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Marketplace.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Manschitz&repository=brunner-eas-integration&category=integration)
 
-After a restart of Home Assistant, this integration is configurable via "Add Integration" under "Devices & Services" like any core integration. Your EAS3 device should be detected automatically if it's on the same local network as your Home Assistant. You can also add the integration manually with this link:
+After a restart of Home Assistant, it is configurable via "Add Integration" under "Devices & Services" like any core integration. Your EAS3 device should be detected automatically if it's on the same local network as your Home Assistant. You can also add the integration manually with this link:
 
 [![Open your Home Assistant instance and start setting up this integration.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=brunner_eas)
 
