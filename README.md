@@ -2,7 +2,6 @@
 
 [![GitHub Release][releases-shield]][releases]
 [![License][license-shield]](LICENSE)
-[![marketplace][marketplace-shield]][marketplace]
 [![HACS Workflow Status][hacs-validation-shield]][hacs-validation]
 [![Hassfest Workflow Status][hassfest-validation-shield]][hassfest-validation]
 
@@ -61,8 +60,6 @@ After a restart of Home Assistant, this integration is configurable via "Add Int
 [brunner-eas]: https://www.brunner.de/produkt/elektronische-abbrandsteuerung-eas-3/
 [releases]: https://github.com/Manschitz/brunner-eas-integration/releases
 [releases-shield]: https://img.shields.io/github/v/release/Manschitz/brunner-eas-integration?style=for-the-badge&logo=homeassistantcommunitystore
-[marketplace]: https://github.com/hacs/integration
-[marketplace-shield]: https://img.shields.io/badge/Marketplace-Default-green?style=for-the-badge&logo=homeassistantcommunitystore
 [hacs-validation]: https://github.com/Manschitz/brunner-eas-integration/actions/workflows/hacs.yml
 [hacs-validation-shield]: https://img.shields.io/github/actions/workflow/status/Manschitz/brunner-eas-integration/hacs.yml?label=HACS&style=for-the-badge
 [hassfest-validation]: https://github.com/Manschitz/brunner-eas-integration/actions/workflows/hassfest.yml
