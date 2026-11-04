@@ -47,7 +47,9 @@ The work is based on the findings by [sharky-os](https://github.com/sharky-os) a
 
 ## Installation and Configuration
 
-This integration is available through the Home Assistant Marketplace: [![Open your Home Assistant instance and open a repository inside the Home Assistant Marketplace.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Manschitz&repository=brunner-eas-integration&category=integration)
+This integration is available through the Home Assistant Marketplace:
+
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Marketplace.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=Manschitz&repository=brunner-eas-integration&category=integration)
 
 After a restart of Home Assistant, this integration is configurable via "Add Integration" under "Devices & Services" like any core integration. Your EAS3 device should be detected automatically if it's on the same local network as your Home Assistant. You can also add the integration manually with this link:
 
