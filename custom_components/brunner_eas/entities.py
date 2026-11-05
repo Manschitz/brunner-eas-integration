@@ -52,6 +52,10 @@ class AbstractBrunnerEntity(
     ) -> None:
         """Initialize the entity."""
 
+        # Initialize state before CoordinatorEntity subscribes to updates.
+        # Home Assistant may access entity properties during registration.
+        self._attr_native_value = None
+        self._attr_is_on = None
         self._attr_translation_key = self._key
         self._attr_unique_id = (
             f"{self._entity_platform}.{DOMAIN}.{self._key}"
@@ -80,15 +84,12 @@ class AbstractBrunnerBinarySensorEntity(
     def available(self) -> bool:
         """Return entity availability."""
 
-        return self._attr_is_on is not None
+        return self.coordinator.is_receiving and self._attr_is_on is not None
 
     def update_from_coordinator(self) -> bool:
         """Update binary sensor state."""
 
-        if self.coordinator.data is None:
-            return False
-
-        new_value = self.coordinator.data.get(self._key)
+        new_value = (self.coordinator.data or {}).get(self._key)
 
         if new_value != self._attr_is_on:
             self._attr_is_on = new_value
@@ -109,15 +110,12 @@ class AbstractBrunnerSensorEntity(
     def available(self) -> bool:
         """Return entity availability."""
 
-        return self.native_value is not None
+        return self.coordinator.is_receiving and self.native_value is not None
 
     def update_from_coordinator(self) -> bool:
         """Update sensor state."""
 
-        if self.coordinator.data is None:
-            return False
-
-        new_value = self.coordinator.data.get(self._key)
+        new_value = (self.coordinator.data or {}).get(self._key)
 
         if new_value != self._attr_native_value:
             self._attr_native_value = new_value
@@ -147,25 +145,23 @@ class BrunnerDisplayBrightnessSensorEntity(AbstractBrunnerSensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle coordinator updates."""
 
-        if self.update_from_coordinator():
-            if self.native_value is None:   self._attr_icon = "mdi:lightbulb-question-outline"
-            elif self.native_value == 0:    self._attr_icon = "mdi:lightbulb-outline"
-            elif self.native_value < 10:    self._attr_icon = "mdi:lightbulb-on-outline"
-            elif self.native_value < 20:    self._attr_icon = "mdi:lightbulb-on-10"
-            elif self.native_value < 30:    self._attr_icon = "mdi:lightbulb-on-20"
-            elif self.native_value < 40:    self._attr_icon = "mdi:lightbulb-on-30"
-            elif self.native_value < 50:    self._attr_icon = "mdi:lightbulb-on-40"
-            elif self.native_value < 60:    self._attr_icon = "mdi:lightbulb-on-50"
-            elif self.native_value < 70:    self._attr_icon = "mdi:lightbulb-on-60"
-            elif self.native_value < 80:    self._attr_icon = "mdi:lightbulb-on-70"
-            elif self.native_value < 90:    self._attr_icon = "mdi:lightbulb-on-80"
-            elif self.native_value < 100:   self._attr_icon = "mdi:lightbulb-on-90"
-            elif self.native_value >= 100:  self._attr_icon = "mdi:lightbulb-on"
-            
+        self.update_from_coordinator()
+        if self.native_value is None:   self._attr_icon = "mdi:lightbulb-question-outline"
+        elif self.native_value == 0:    self._attr_icon = "mdi:lightbulb-outline"
+        elif self.native_value < 10:    self._attr_icon = "mdi:lightbulb-on-outline"
+        elif self.native_value < 20:    self._attr_icon = "mdi:lightbulb-on-10"
+        elif self.native_value < 30:    self._attr_icon = "mdi:lightbulb-on-20"
+        elif self.native_value < 40:    self._attr_icon = "mdi:lightbulb-on-30"
+        elif self.native_value < 50:    self._attr_icon = "mdi:lightbulb-on-40"
+        elif self.native_value < 60:    self._attr_icon = "mdi:lightbulb-on-50"
+        elif self.native_value < 70:    self._attr_icon = "mdi:lightbulb-on-60"
+        elif self.native_value < 80:    self._attr_icon = "mdi:lightbulb-on-70"
+        elif self.native_value < 90:    self._attr_icon = "mdi:lightbulb-on-80"
+        elif self.native_value < 100:   self._attr_icon = "mdi:lightbulb-on-90"
+        elif self.native_value >= 100:  self._attr_icon = "mdi:lightbulb-on"
+        
 
-            self.schedule_update_ha_state()
-
-
+        self.async_write_ha_state()
 # -----------------------------------------------------------------------------
 
 class BrunnerDoorSensorEntity(AbstractBrunnerBinarySensorEntity):
@@ -180,18 +176,16 @@ class BrunnerDoorSensorEntity(AbstractBrunnerBinarySensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle coordinator updates."""
 
-        if self.update_from_coordinator():
-            match self._attr_is_on:
-                case True:
-                    self._attr_icon = "mdi:door-open"
-                case False:
-                    self._attr_icon = "mdi:door"
-                case _:
-                    self._attr_icon = "mdi:door"
+        self.update_from_coordinator()
+        match self._attr_is_on:
+            case True:
+                self._attr_icon = "mdi:door-open"
+            case False:
+                self._attr_icon = "mdi:door"
+            case _:
+                self._attr_icon = "mdi:door"
 
-            self.schedule_update_ha_state()
-
-
+        self.async_write_ha_state()
 # -----------------------------------------------------------------------------
 
 class BrunnerSPlusModeSensorEntity(AbstractBrunnerBinarySensorEntity):
@@ -205,18 +199,16 @@ class BrunnerSPlusModeSensorEntity(AbstractBrunnerBinarySensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle coordinator updates."""
 
-        if self.update_from_coordinator():
-            match self._attr_is_on:
-                case True:
-                    self._attr_icon = "mdi:clock-plus"
-                case False:
-                    self._attr_icon = "mdi:clock-remove-outline"
-                case _:
-                    self._attr_icon = "mdi:clock-plus-outline"
+        self.update_from_coordinator()
+        match self._attr_is_on:
+            case True:
+                self._attr_icon = "mdi:clock-plus"
+            case False:
+                self._attr_icon = "mdi:clock-remove-outline"
+            case _:
+                self._attr_icon = "mdi:clock-plus-outline"
 
-            self.schedule_update_ha_state()
-
-
+        self.async_write_ha_state()
 # -----------------------------------------------------------------------------
 
 class BrunnerEcoModeSensorEntity(AbstractBrunnerBinarySensorEntity):
@@ -230,18 +222,16 @@ class BrunnerEcoModeSensorEntity(AbstractBrunnerBinarySensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle coordinator updates."""
 
-        if self.update_from_coordinator():
-            match self._attr_is_on:
-                case True:
-                    self._attr_icon = "mdi:leaf"
-                case False:
-                    self._attr_icon = "mdi:leaf-off"
-                case _:
-                    self._attr_icon = "mdi:leaf"
+        self.update_from_coordinator()
+        match self._attr_is_on:
+            case True:
+                self._attr_icon = "mdi:leaf"
+            case False:
+                self._attr_icon = "mdi:leaf-off"
+            case _:
+                self._attr_icon = "mdi:leaf"
 
-            self.schedule_update_ha_state()
-
-
+        self.async_write_ha_state()
 # -----------------------------------------------------------------------------
 
 class BrunnerReloadingIndicationsSensorEntity(AbstractBrunnerSensorEntity):
@@ -267,17 +257,15 @@ class BrunnerReloadingIndicationsSensorEntity(AbstractBrunnerSensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle coordinator updates."""
 
-        if self.update_from_coordinator():
-            match self._attr_native_value:
-                case BrunnerReloadingIndicationsEnum.OFF:                           self._attr_icon = "mdi:flag-variant-off-outline"
-                case BrunnerReloadingIndicationsEnum.SYMBOLS:                       self._attr_icon = "mdi:flag-variant"
-                case BrunnerReloadingIndicationsEnum.SYMBOLS_AND_BEEPS:             self._attr_icon = "mdi:bell-ring"
-                case BrunnerReloadingIndicationsEnum.SYMBOLS_AND_BLINKING:          self._attr_icon = "mdi:flag-variant-plus"
-                case BrunnerReloadingIndicationsEnum.SYMBOLS_BEEPS_AND_BLINKING:    self._attr_icon = "mdi:bell-ring"
-                case _:                                                             self._attr_icon = "mdi:flag-variant-outline"
-            self.schedule_update_ha_state()
-
-
+        self.update_from_coordinator()
+        match self._attr_native_value:
+            case BrunnerReloadingIndicationsEnum.OFF:                           self._attr_icon = "mdi:flag-variant-off-outline"
+            case BrunnerReloadingIndicationsEnum.SYMBOLS:                       self._attr_icon = "mdi:flag-variant"
+            case BrunnerReloadingIndicationsEnum.SYMBOLS_AND_BEEPS:             self._attr_icon = "mdi:bell-ring"
+            case BrunnerReloadingIndicationsEnum.SYMBOLS_AND_BLINKING:          self._attr_icon = "mdi:flag-variant-plus"
+            case BrunnerReloadingIndicationsEnum.SYMBOLS_BEEPS_AND_BLINKING:    self._attr_icon = "mdi:bell-ring"
+            case _:                                                             self._attr_icon = "mdi:flag-variant-outline"
+        self.async_write_ha_state()
 # -----------------------------------------------------------------------------
 
 class BrunnerReloadingNoteSensorEntity(AbstractBrunnerBinarySensorEntity):
@@ -290,11 +278,9 @@ class BrunnerReloadingNoteSensorEntity(AbstractBrunnerBinarySensorEntity):
     def update_from_coordinator(self) -> bool:
         """Update reloading note state."""
 
-        if self.coordinator.data is None:
-            return False
-
-        reload_start = self.coordinator.data.get("flag_reload_start")
-        reload_end = self.coordinator.data.get("flag_reload_end")
+        data = self.coordinator.data or {}
+        reload_start = data.get("flag_reload_start")
+        reload_end = data.get("flag_reload_end")
 
         if reload_start is None or reload_end is None:
             new_value = None
@@ -311,18 +297,16 @@ class BrunnerReloadingNoteSensorEntity(AbstractBrunnerBinarySensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle coordinator updates."""
 
-        if self.update_from_coordinator():
-            match self._attr_is_on:
-                case True:
-                    self._attr_icon = "mdi:human-dolly"
-                case False:
-                    self._attr_icon = "mdi:hand-back-right-off-outline"
-                case _:
-                    self._attr_icon = "mdi:hand-back-right-off-outline"
+        self.update_from_coordinator()
+        match self._attr_is_on:
+            case True:
+                self._attr_icon = "mdi:human-dolly"
+            case False:
+                self._attr_icon = "mdi:hand-back-right-off-outline"
+            case _:
+                self._attr_icon = "mdi:hand-back-right-off-outline"
 
-            self.schedule_update_ha_state()
-
-
+        self.async_write_ha_state()
 # -----------------------------------------------------------------------------
 
 class BrunnerTemperatureSensorEntity(AbstractBrunnerSensorEntity):
@@ -345,16 +329,14 @@ class BrunnerTemperatureSensorEntity(AbstractBrunnerSensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle coordinator updates."""
 
-        if self.update_from_coordinator():
-            if self.native_value is None:   self._attr_icon = "mdi:thermometer-off"
-            elif self.native_value < 60:    self._attr_icon = "mdi:thermometer-low"
-            elif self.native_value < 160:   self._attr_icon = "mdi:thermometer"
-            elif self.native_value < 300:   self._attr_icon = "mdi:thermometer-high"
-            elif self.native_value < 600:   self._attr_icon = "mdi:fire"
-            elif self.native_value >= 600:  self._attr_icon = "mdi:fire-alert"
-            self.schedule_update_ha_state()
-
-
+        self.update_from_coordinator()
+        if self.native_value is None:   self._attr_icon = "mdi:thermometer-off"
+        elif self.native_value < 60:    self._attr_icon = "mdi:thermometer-low"
+        elif self.native_value < 160:   self._attr_icon = "mdi:thermometer"
+        elif self.native_value < 300:   self._attr_icon = "mdi:thermometer-high"
+        elif self.native_value < 600:   self._attr_icon = "mdi:fire"
+        elif self.native_value >= 600:  self._attr_icon = "mdi:fire-alert"
+        self.async_write_ha_state()
 # -----------------------------------------------------------------------------
 
 class BrunnerCombustionSensorEntity(AbstractBrunnerSensorEntity):
@@ -380,21 +362,19 @@ class BrunnerCombustionSensorEntity(AbstractBrunnerSensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle coordinator updates."""
 
-        if self.update_from_coordinator():
-            match self._attr_native_value:
-                case BrunnerCombustionEnum.UNKNOWN:     self._attr_icon = "mdi:help-circle-outline"
-                case BrunnerCombustionEnum.DOOR_OPEN:   self._attr_icon = "mdi:door-open"
-                case BrunnerCombustionEnum.STAGE1:      self._attr_icon = "mdi:circle-slice-1"
-                case BrunnerCombustionEnum.STAGE2:      self._attr_icon = "mdi:circle-slice-2"
-                case BrunnerCombustionEnum.STAGE3:      self._attr_icon = "mdi:circle-slice-3"
-                case BrunnerCombustionEnum.STAGE4:      self._attr_icon = "mdi:circle-slice-4"
-                case BrunnerCombustionEnum.EMBERS:      self._attr_icon = "mdi:circle-slice-5"
-                case BrunnerCombustionEnum.REST:        self._attr_icon = "mdi:circle-slice-7"
-                case BrunnerCombustionEnum.ENDED:       self._attr_icon = "mdi:circle-slice-8"
-                case _:                                 self._attr_icon = "mdi:help-circle-outline"
-            self.schedule_update_ha_state()
-
-
+        self.update_from_coordinator()
+        match self._attr_native_value:
+            case BrunnerCombustionEnum.UNKNOWN:     self._attr_icon = "mdi:help-circle-outline"
+            case BrunnerCombustionEnum.DOOR_OPEN:   self._attr_icon = "mdi:door-open"
+            case BrunnerCombustionEnum.STAGE1:      self._attr_icon = "mdi:circle-slice-1"
+            case BrunnerCombustionEnum.STAGE2:      self._attr_icon = "mdi:circle-slice-2"
+            case BrunnerCombustionEnum.STAGE3:      self._attr_icon = "mdi:circle-slice-3"
+            case BrunnerCombustionEnum.STAGE4:      self._attr_icon = "mdi:circle-slice-4"
+            case BrunnerCombustionEnum.EMBERS:      self._attr_icon = "mdi:circle-slice-5"
+            case BrunnerCombustionEnum.REST:        self._attr_icon = "mdi:circle-slice-7"
+            case BrunnerCombustionEnum.ENDED:       self._attr_icon = "mdi:circle-slice-8"
+            case _:                                 self._attr_icon = "mdi:help-circle-outline"
+        self.async_write_ha_state()
 # -----------------------------------------------------------------------------
 
 class BrunnerErrorSensorEntity(AbstractBrunnerSensorEntity):
@@ -420,14 +400,12 @@ class BrunnerErrorSensorEntity(AbstractBrunnerSensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle coordinator updates."""
 
-        if self.update_from_coordinator():
-            match self._attr_native_value:
-                case BrunnerErrorStateEnum.UNKNOWN: self._attr_icon = "mdi:help"
-                case BrunnerErrorStateEnum.NONE:    self._attr_icon = "mdi:alert-circle-check-outline"
-                case _:                             self._attr_icon = "mdi:alert-decagram"
-            self.schedule_update_ha_state()
-
-
+        self.update_from_coordinator()
+        match self._attr_native_value:
+            case BrunnerErrorStateEnum.UNKNOWN: self._attr_icon = "mdi:help"
+            case BrunnerErrorStateEnum.NONE:    self._attr_icon = "mdi:alert-circle-check-outline"
+            case _:                             self._attr_icon = "mdi:alert-decagram"
+        self.async_write_ha_state()
 # -----------------------------------------------------------------------------
 
 class BrunnerLoudnessSensorEntity(AbstractBrunnerSensorEntity):
@@ -453,15 +431,13 @@ class BrunnerLoudnessSensorEntity(AbstractBrunnerSensorEntity):
     def _handle_coordinator_update(self) -> None:
         """Handle coordinator updates."""
 
-        if self.update_from_coordinator():
-            match self._attr_native_value:
-                case BrunnerLoudnessEnum.SILENT:    self._attr_icon = "mdi:volume-variant-off"
-                case BrunnerLoudnessEnum.MEDIUM:    self._attr_icon = "mdi:volume-medium"
-                case BrunnerLoudnessEnum.LOUD:      self._attr_icon = "mdi:volume-high"
-                case _:                             self._attr_icon = "mdi:volume-variant-off"
-            self.schedule_update_ha_state()
-
-
+        self.update_from_coordinator()
+        match self._attr_native_value:
+            case BrunnerLoudnessEnum.SILENT:    self._attr_icon = "mdi:volume-variant-off"
+            case BrunnerLoudnessEnum.MEDIUM:    self._attr_icon = "mdi:volume-medium"
+            case BrunnerLoudnessEnum.LOUD:      self._attr_icon = "mdi:volume-high"
+            case _:                             self._attr_icon = "mdi:volume-variant-off"
+        self.async_write_ha_state()
 # -----------------------------------------------------------------------------
 
 class BrunnerIPAddressSensorEntity(AbstractBrunnerSensorEntity):
@@ -475,7 +451,13 @@ class BrunnerIPAddressSensorEntity(AbstractBrunnerSensorEntity):
     def native_value(self) -> str | None:
         """Return IP address."""
 
-        return self.coordinator.data.get("ip_address") if self.coordinator.data else None
+        return self._attr_native_value
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Update the IP address when a UDP packet is received."""
+        self.update_from_coordinator()
+        self.async_write_ha_state()
 
 
 # -----------------------------------------------------------------------------

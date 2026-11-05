@@ -13,24 +13,13 @@ async def async_setup_entry(
     hass: HomeAssistant,
     entry: BrunnerConfigEntry,
 ) -> None:
-    """Set up Brunner EAS."""
-
+    """Set up BRUNNER EAS from a config entry."""
     coordinator = BrunnerDataUpdateCoordinator(hass, entry)
-    entry.runtime_data = coordinator
 
     try:
-        # Start listening for UDP packets.
-        coordinator.start_receiving()
-
-        # Perform the initial coordinator refresh.
-        await coordinator.async_config_entry_first_refresh()
-
-        # Set up the platforms.
-        await hass.config_entries.async_forward_entry_setups(
-            entry,
-            PLATFORMS,
-        )
-
+        await coordinator.async_start_receiving()
+        entry.runtime_data = coordinator
+        await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     except Exception:
         await coordinator.async_disconnect()
         raise
@@ -40,13 +29,6 @@ async def async_unload_entry(
     hass: HomeAssistant,
     entry: BrunnerConfigEntry,
 ) -> None:
-    """Unload Brunner EAS."""
-
-    # Unload the platforms first.
-    await hass.config_entries.async_unload_platforms_or_raise(
-        entry,
-        PLATFORMS,
-    )
-
-    # Stop the UDP receiver and close the socket.
+    """Unload BRUNNER EAS and release the UDP listener."""
+    await hass.config_entries.async_unload_platforms_or_raise(entry, PLATFORMS)
     await entry.runtime_data.async_disconnect()

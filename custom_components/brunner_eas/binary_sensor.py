@@ -1,7 +1,7 @@
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from .coordinator import BrunnerDataUpdateCoordinator
 from .entities import (
@@ -17,7 +17,7 @@ from .entities import (
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry[BrunnerDataUpdateCoordinator],
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up Brunner EAS sensors."""
 

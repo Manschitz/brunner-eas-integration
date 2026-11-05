@@ -2,12 +2,10 @@
 import asyncio
 import logging
 import re
-import socket
-import threading
 
 from typing import TypedDict
 
-from homeassistant.config_entries import ConfigEntry
+from homeassistant.config_entries import ConfigEntry, ConfigEntryNotReady
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import (
@@ -35,7 +33,7 @@ _REGEX_UDP_DATA = re.compile(
     r'.*?;(?P<firmware>[0-9]+);'
     r'.*?;(?P<error>-?[0-9]+);'
     r'(?P<icon_flags>[0-9]+);'
-    r'.*?;(?P<temperature>-?[0-9]+);.*$'
+    r'.*?;(?P<temperature>-?[0-9]+);.*</bdle>$'
 )
 
 
@@ -66,147 +64,102 @@ class BrunnerDataDict(TypedDict, total=False):
 # -----------------------------------------------------------------------------
 
 
-class BrunnerDataUpdateCoordinator(
-    DataUpdateCoordinator[BrunnerDataDict]
-):
-    """Coordinator for Brunner EAS."""
+class _BrunnerUDPProtocol(asyncio.DatagramProtocol):
+    """Receive packets directly on the Home Assistant event loop."""
 
-    def __init__(
-        self,
-        hass: HomeAssistant,
-        config_entry: ConfigEntry,
-    ) -> None:
-        """Initialize the coordinator."""
+    def __init__(self, coordinator: "BrunnerDataUpdateCoordinator") -> None:
+        self.coordinator = coordinator
 
+    def datagram_received(self, data: bytes, address: tuple[str, int]) -> None:
+        if len(data) > self.coordinator.MAX_PACKET_BYTES:
+            self.coordinator._warn_invalid("Oversized BRUNNER UDP packet ignored")
+            return
+        try:
+            message = data.decode("utf-8")
+        except UnicodeDecodeError:
+            self.coordinator._warn_invalid("Invalid UTF-8 BRUNNER UDP packet")
+            return
+        try:
+            self.coordinator.process_data(message, address)
+        except (ValueError, TypeError, OverflowError) as exc:
+            self.coordinator._warn_invalid(f"Malformed BRUNNER UDP packet: {type(exc).__name__}")
+
+    def error_received(self, exc: Exception) -> None:
+        _LOGGER.warning("Brunner UDP transport error: %s", exc)
+
+
+class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
+    """Coordinator for Brunner EAS local UDP broadcasts."""
+
+    # A stopped transmitter should not leave the last measured temperature live.
+    PACKET_TIMEOUT_SECONDS = 180
+    MAX_PACKET_BYTES = 2048
+
+    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry) -> None:
         self.config_entry = config_entry
-
-        super().__init__(
-            hass,
-            _LOGGER,
-            name=DOMAIN,
-            update_interval=None,
-        )
-
-        self.udp_socket: socket.socket | None = socket.socket(
-            socket.AF_INET,
-            socket.SOCK_DGRAM,
-        )
-        self.udp_socket.setsockopt(
-            socket.SOL_SOCKET,
-            socket.SO_REUSEADDR,
-            1,
-        )
-        self.udp_socket.settimeout(1.0)
-        self.udp_socket.bind(("0.0.0.0", 45454))
-
-        self._stop_event = threading.Event()
-        self._receiver_future: asyncio.Future[None] | None = None
+        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=None)
+        self._transport: asyncio.DatagramTransport | None = None
+        self._timeout_handle: asyncio.TimerHandle | None = None
+        self._stopped = True
+        self.is_receiving = False
+        self._last_firmware: str | None = None
+        self._last_invalid_log = 0.0
 
     async def _async_update_data(self) -> BrunnerDataDict:
-        """Return the current data."""
-
+        """Push-based coordinator: no network polling is necessary."""
         return self.data if self.data is not None else {}
 
-    # -------------------------------------------------------------------------
-    # UDP receiver lifecycle
-
-    def start_receiving(self) -> None:
-        """Start the UDP receiver."""
-
-        if (
-            self._receiver_future is not None
-            and not self._receiver_future.done()
-        ):
-            _LOGGER.debug("UDP receiver is already running")
+    async def async_start_receiving(self) -> None:
+        """Bind UDP without blocking the event loop."""
+        if self._transport is not None:
             return
+        self._stopped = False
+        try:
+            transport, _ = await self.hass.loop.create_datagram_endpoint(
+                lambda: _BrunnerUDPProtocol(self),
+                local_addr=("0.0.0.0", 45454),
+            )
+        except OSError as exc:
+            self._stopped = True
+            raise ConfigEntryNotReady(f"Unable to bind BRUNNER UDP port 45454: {exc}") from exc
+        except Exception:
+            self._stopped = True
+            raise
+        self._transport = transport
+        self._reset_timeout()
+        _LOGGER.debug("Started Brunner UDP listener on port 45454")
 
-        if self.udp_socket is None:
-            _LOGGER.error("Cannot start UDP receiver: socket is closed")
-            return
-
-        self._stop_event.clear()
-
-        self._receiver_future = self.hass.async_add_executor_job(
-            self.receive_data
+    def _reset_timeout(self) -> None:
+        if self._timeout_handle is not None:
+            self._timeout_handle.cancel()
+        self._timeout_handle = self.hass.loop.call_later(
+            self.PACKET_TIMEOUT_SECONDS, self._packet_timed_out
         )
 
-        _LOGGER.debug("Started Brunner UDP receiver")
-
-    async def async_stop_receiving(self) -> None:
-        """Stop the UDP receiver."""
-
-        self._stop_event.set()
-
-        if self._receiver_future is not None:
-            try:
-                await self._receiver_future
-            finally:
-                self._receiver_future = None
-
-        _LOGGER.debug("Stopped Brunner UDP receiver")
+    def _packet_timed_out(self) -> None:
+        self._timeout_handle = None
+        if self._stopped:
+            return
+        _LOGGER.warning(
+            "No valid Brunner EAS packet received for %s seconds; marking entities unavailable",
+            self.PACKET_TIMEOUT_SECONDS,
+        )
+        self.is_receiving = False
+        self.async_update_listeners()
+        # Remain unavailable until the next valid packet; no repeated warnings.
 
     async def async_disconnect(self) -> None:
-        """Stop the receiver and close the UDP socket."""
-
-        self._stop_event.set()
-
-        try:
-            await self.async_stop_receiving()
-        finally:
-            if self.udp_socket is not None:
-                self.udp_socket.close()
-                self.udp_socket = None
-
-        _LOGGER.debug("Disconnected Brunner UDP receiver")
-
-    # -------------------------------------------------------------------------
-    # UDP data reception
-
-    def receive_data(self) -> None:
-        """Receive UDP packets in an executor thread."""
-
-        udp_socket = self.udp_socket
-
-        if udp_socket is None:
-            _LOGGER.error("Cannot receive UDP data: socket is closed")
-            return
-
-        while not self._stop_event.is_set():
-            try:
-                data, address = udp_socket.recvfrom(1024)
-
-            except socket.timeout:
-                continue
-
-            except OSError:
-                if not self._stop_event.is_set():
-                    _LOGGER.exception("Error receiving Brunner UDP data")
-                break
-
-            except Exception:
-                _LOGGER.exception("Unexpected error receiving UDP data")
-                break
-
-            if self._stop_event.is_set():
-                break
-
-            try:
-                response_message = data.decode("utf-8")
-
-                # Process packets on the Home Assistant event loop.
-                self.hass.add_job(
-                    self.process_data,
-                    response_message,
-                    address,
-                )
-
-            except UnicodeDecodeError:
-                _LOGGER.warning("Received invalid UTF-8 UDP packet")
-
-            except Exception:
-                _LOGGER.exception("Error processing received UDP packet")
-
-        _LOGGER.debug("Brunner UDP receiver thread exited")
+        """Stop listening and cancel pending callbacks during unload/reload."""
+        self._stopped = True
+        self.is_receiving = False
+        if self._timeout_handle is not None:
+            self._timeout_handle.cancel()
+            self._timeout_handle = None
+        if self._transport is not None:
+            self._transport.close()
+            self._transport = None
+        self.async_update_listeners()
+        _LOGGER.debug("Stopped Brunner UDP listener")
 
     # -------------------------------------------------------------------------
     # UDP data processing
@@ -218,21 +171,22 @@ class BrunnerDataUpdateCoordinator(
     ) -> None:
         """Process received Brunner UDP data."""
 
+        if self._stopped:
+            return
+
         #_LOGGER.debug("Received UDP message from {}: {}".format(address, response_message))
 
-        if not response_message.startswith("<bdle"):
+        response_message = response_message.rstrip("\x00\r\n ")
+        if not response_message.startswith("<bdle") or "</bdle>" not in response_message:
             return
 
         # e.g. "<bdle eas="0" pin="0" cmd="410" stat="5">0;1;1;85;2;4;0;331;2;0;48;0;155;1;</bdle> \0"
         # s+;öko;wifi?;disp;sum;nlh;dros?;vers;verp?;error;icon_flags;?;temp;?
-        match = _REGEX_UDP_DATA.search(response_message)
+        match = _REGEX_UDP_DATA.fullmatch(response_message)
         #_LOGGER.debug(match.groups())
 
         if match is None:
-            _LOGGER.error(
-                "Invalid or incompatible data format in response message: %s",
-                response_message,
-            )
+            self._warn_invalid("Invalid or incompatible BRUNNER packet")
             return
 
         try:
@@ -301,66 +255,59 @@ class BrunnerDataUpdateCoordinator(
             "flag_reload_end": flag_reload_end,
         }
 
-        firmware_changed = (
-            self.data is None
-            or firmware != self.data.get("firmware")
-        )
+        firmware_changed = firmware != self._last_firmware
 
+        self._reset_timeout()
+        self.is_receiving = True
         self.async_set_updated_data(data)
 
         if firmware_changed:
-            self.hass.add_job(
-                self.async_update_firmware_version,
-                firmware,
-            )
+            self.update_firmware_version(firmware)
+            self._last_firmware = firmware
 
         _LOGGER.debug("Brunner data updated: %s", data)
 
     # -------------------------------------------------------------------------
     # Home Assistant device registry
 
+    def _warn_invalid(self, message: str) -> None:
+        """Rate-limit malformed packet logs."""
+        now = self.hass.loop.time()
+        if now - self._last_invalid_log >= 60 or self._last_invalid_log == 0:
+            _LOGGER.warning("%s", message)
+            self._last_invalid_log = now
+
     def device_info(self) -> DeviceInfo:
         """Return Brunner device information."""
 
-        device_info = DeviceInfo(
-            manufacturer="BRUNNER",
-            model="EAS",
-            name="BRUNNER EAS",
-            identifiers={(DOMAIN, "coordinator")},
-        )
-
-        if self.data is not None:
-            firmware = self.data.get("firmware")
-
-            if firmware is not None:
-                device_info.sw_version = firmware
+        info: DeviceInfo = {
+            "manufacturer": "BRUNNER",
+            "model": "EAS",
+            "name": "BRUNNER EAS",
+            "identifiers": {(DOMAIN, "coordinator")},
+        }
+        if self.data and self.data.get("firmware"):
+            info["sw_version"] = self.data["firmware"]
 
         discovery_info = self.config_entry.data.get("discovery_info")
-
         if discovery_info and discovery_info.get("macaddress"):
-            device_info.connections = {
-                (
-                    CONNECTION_NETWORK_MAC,
-                    discovery_info["macaddress"],
-                )
+            info["connections"] = {
+                (CONNECTION_NETWORK_MAC, discovery_info["macaddress"])
             }
+        return info
 
-        return device_info
+    def update_firmware_version(self, firmware: str) -> None:
+        """Synchronously update firmware in the device registry on the HA loop."""
 
-    async def async_update_firmware_version(
-        self,
-        firmware: str,
-    ) -> None:
-        """Update firmware version in the device registry."""
-
-        registry = dr.async_get(self.hass)
-
-        device_info = self.device_info()
-        device_info.sw_version = firmware
-
-        registry.async_get_or_create_from_info(
+        info = self.device_info()
+        dr.async_get(self.hass).async_get_or_create(
             config_entry_id=self.config_entry.entry_id,
-            device_info=device_info,
+            identifiers=info["identifiers"],
+            connections=info.get("connections"),
+            manufacturer=info["manufacturer"],
+            model=info["model"],
+            name=info["name"],
+            sw_version=firmware,
         )
 
     # -------------------------------------------------------------------------
