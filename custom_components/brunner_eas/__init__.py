@@ -2,61 +2,51 @@
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
-from .const import DOMAIN, PLATFORMS
+from .const import PLATFORMS
 from .coordinator import BrunnerDataUpdateCoordinator
+
+
+type BrunnerConfigEntry = ConfigEntry[BrunnerDataUpdateCoordinator]
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-) -> bool:
+    entry: BrunnerConfigEntry,
+) -> None:
     """Set up Brunner EAS."""
 
     coordinator = BrunnerDataUpdateCoordinator(hass, entry)
-
-    hass.data.setdefault(DOMAIN, {})
-    hass.data[DOMAIN]["coordinator"] = coordinator
+    entry.runtime_data = coordinator
 
     try:
-        # Start listening for UDP packets
+        # Start listening for UDP packets.
         coordinator.start_receiving()
 
+        # Perform the initial coordinator refresh.
+        await coordinator.async_config_entry_first_refresh()
+
+        # Set up the platforms.
         await hass.config_entries.async_forward_entry_setups(
             entry,
             PLATFORMS,
         )
 
-        await coordinator.async_config_entry_first_refresh()
-
     except Exception:
         await coordinator.async_disconnect()
-
-        hass.data[DOMAIN].pop("coordinator", None)
-
-        if not hass.data[DOMAIN]:
-            hass.data.pop(DOMAIN)
-
         raise
-
-    return True
 
 
 async def async_unload_entry(
     hass: HomeAssistant,
-    entry: ConfigEntry,
-) -> bool:
+    entry: BrunnerConfigEntry,
+) -> None:
     """Unload Brunner EAS."""
 
-    if unload_ok := await hass.config_entries.async_unload_platforms(
+    # Unload the platforms first.
+    await hass.config_entries.async_unload_platforms_or_raise(
         entry,
         PLATFORMS,
-    ):
-        coordinator = hass.data[DOMAIN].pop("coordinator", None)
+    )
 
-        if coordinator is not None:
-            await coordinator.async_disconnect()
-
-        if not hass.data[DOMAIN]:
-            hass.data.pop(DOMAIN)
-
-    return unload_ok
+    # Stop the UDP receiver and close the socket.
+    await entry.runtime_data.async_disconnect()

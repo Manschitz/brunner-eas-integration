@@ -2,8 +2,8 @@
 import logging
 from typing import Any
 
-from homeassistant.config_entries import ConfigFlow
-from homeassistant.data_entry_flow import FlowResult
+from homeassistant.config_entries import ConfigFlow, ConfigFlowResult
+from homeassistant.helpers.device_registry import format_mac
 from homeassistant.helpers.service_info.dhcp import DhcpServiceInfo
 
 from .const import DOMAIN
@@ -21,19 +21,18 @@ class BrunnerLocalConfigFlow(ConfigFlow, domain=DOMAIN):
     def __init__(self) -> None:
         """Initialize config flow."""
 
-        self._discovery_info: dict[str, Any] | None = None
+        self._discovery_info: dict[str, str] | None = None
 
     async def async_step_user(
         self,
         user_input: dict[str, Any] | None = None,
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle manual setup."""
 
-        # Integration only supports one device
+        # Integration only supports one device.
         await self.async_set_unique_id(_DEFAULT_UNIQUE_ID)
         self._abort_if_unique_id_configured()
 
-        # This calls async_setup_entry() in __init__.py
         return self.async_create_entry(
             title="BRUNNER EAS",
             data={},
@@ -42,29 +41,45 @@ class BrunnerLocalConfigFlow(ConfigFlow, domain=DOMAIN):
     async def async_step_dhcp(
         self,
         discovery_info: DhcpServiceInfo,
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Handle DHCP discovery."""
 
-        _LOGGER.debug("BRUNNER DHCP discovery: %s", discovery_info)
+        mac_address = format_mac(discovery_info.macaddress)
 
-        # Integration only supports one device
+        _LOGGER.debug(
+            "BRUNNER DHCP discovery: IP=%s, hostname=%s, MAC=%s",
+            discovery_info.ip,
+            discovery_info.hostname,
+            mac_address,
+        )
+
+        # Integration only supports one device.
         await self.async_set_unique_id(_DEFAULT_UNIQUE_ID)
-        self._abort_if_unique_id_configured()
 
         self._discovery_info = {
             "ip": discovery_info.ip,
-            "hostname": discovery_info.hostname,
-            "macaddress": discovery_info.macaddress,
+            "hostname": discovery_info.hostname or "Unknown",
+            "macaddress": mac_address,
         }
 
-        # Ask the user before creating the config entry.
+        # Update an existing manually configured entry with DHCP information.
+        # This also reloads the entry if its data has changed.
+        self._abort_if_unique_id_configured(
+            updates={
+                "discovery_info": self._discovery_info,
+            }
+        )
+
+        # Ask the user before creating a new config entry.
         return await self.async_step_confirm()
 
     async def async_step_confirm(
         self,
         user_input: dict[str, Any] | None = None,
-    ) -> FlowResult:
+    ) -> ConfigFlowResult:
         """Confirm DHCP discovery."""
+
+        assert self._discovery_info is not None
 
         if user_input is None:
             return self.async_show_form(

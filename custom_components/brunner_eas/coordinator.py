@@ -1,4 +1,5 @@
 
+import asyncio
 import logging
 import re
 import socket
@@ -10,8 +11,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import (
-    DeviceInfo,
     CONNECTION_NETWORK_MAC,
+    DeviceInfo,
 )
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
@@ -40,6 +41,7 @@ _REGEX_UDP_DATA = re.compile(
 
 # -----------------------------------------------------------------------------
 
+
 class BrunnerDataDict(TypedDict, total=False):
     debug: str
     ip_address: str
@@ -63,7 +65,10 @@ class BrunnerDataDict(TypedDict, total=False):
 
 # -----------------------------------------------------------------------------
 
-class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
+
+class BrunnerDataUpdateCoordinator(
+    DataUpdateCoordinator[BrunnerDataDict]
+):
     """Coordinator for Brunner EAS."""
 
     def __init__(
@@ -71,6 +76,8 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
         hass: HomeAssistant,
         config_entry: ConfigEntry,
     ) -> None:
+        """Initialize the coordinator."""
+
         self.config_entry = config_entry
 
         super().__init__(
@@ -80,7 +87,7 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
             update_interval=None,
         )
 
-        self.udp_socket = socket.socket(
+        self.udp_socket: socket.socket | None = socket.socket(
             socket.AF_INET,
             socket.SOCK_DGRAM,
         )
@@ -93,10 +100,12 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
         self.udp_socket.bind(("0.0.0.0", 45454))
 
         self._stop_event = threading.Event()
-        self._receiver_future = None
+        self._receiver_future: asyncio.Future[None] | None = None
 
     async def _async_update_data(self) -> BrunnerDataDict:
-        return self.data
+        """Return the current data."""
+
+        return self.data if self.data is not None else {}
 
     # -------------------------------------------------------------------------
     # UDP receiver lifecycle
@@ -129,19 +138,24 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
         self._stop_event.set()
 
         if self._receiver_future is not None:
-            await self._receiver_future
-            self._receiver_future = None
+            try:
+                await self._receiver_future
+            finally:
+                self._receiver_future = None
 
         _LOGGER.debug("Stopped Brunner UDP receiver")
 
     async def async_disconnect(self) -> None:
         """Stop the receiver and close the UDP socket."""
 
-        await self.async_stop_receiving()
+        self._stop_event.set()
 
-        if self.udp_socket is not None:
-            self.udp_socket.close()
-            self.udp_socket = None
+        try:
+            await self.async_stop_receiving()
+        finally:
+            if self.udp_socket is not None:
+                self.udp_socket.close()
+                self.udp_socket = None
 
         _LOGGER.debug("Disconnected Brunner UDP receiver")
 
@@ -151,9 +165,15 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
     def receive_data(self) -> None:
         """Receive UDP packets in an executor thread."""
 
+        udp_socket = self.udp_socket
+
+        if udp_socket is None:
+            _LOGGER.error("Cannot receive UDP data: socket is closed")
+            return
+
         while not self._stop_event.is_set():
             try:
-                data, address = self.udp_socket.recvfrom(1024)
+                data, address = udp_socket.recvfrom(1024)
 
             except socket.timeout:
                 continue
@@ -194,7 +214,7 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
     def process_data(
         self,
         response_message: str,
-        address: tuple,
+        address: tuple[str, int],
     ) -> None:
         """Process received Brunner UDP data."""
 
@@ -223,9 +243,28 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
             _LOGGER.warning("Unknown Brunner error state")
             error_state = BrunnerErrorStateEnum.UNKNOWN
 
-        combustion = BrunnerCombustionEnum(
-            int(match.group("status"))
-        )
+        try:
+            combustion = BrunnerCombustionEnum(
+                int(match.group("status"))
+            )
+
+            reloading_indications = BrunnerReloadingIndicationsEnum(
+                int(match.group("reloading_indications"))
+            )
+
+            tone_loudness = BrunnerLoudnessEnum(
+                int(match.group("loudness"))
+            )
+
+        except (ValueError, TypeError):
+            _LOGGER.warning(
+                "Received unsupported enum values: status=%s, "
+                "reloading=%s, loudness=%s",
+                match.group("status"),
+                match.group("reloading_indications"),
+                match.group("loudness"),
+            )
+            return
 
         icon_flags = int(match.group("icon_flags"))
 
@@ -252,13 +291,9 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
             "splus": match.group("splus") == "1",
             "combustion": combustion,
             "firmware": firmware,
-            "reloading_indications": BrunnerReloadingIndicationsEnum(
-                int(match.group("reloading_indications"))
-            ),
+            "reloading_indications": reloading_indications,
             "temperature": int(match.group("temperature")),
-            "tone_loudness": BrunnerLoudnessEnum(
-                int(match.group("loudness"))
-            ),
+            "tone_loudness": tone_loudness,
             "flag_door_error": flag_door_error,
             "flag_splus_on": flag_splus_on,
             "flag_eco_off": flag_eco_off,
@@ -266,13 +301,18 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
             "flag_reload_end": flag_reload_end,
         }
 
-        if self.data is None or firmware != self.data.get("firmware"):
+        firmware_changed = (
+            self.data is None
+            or firmware != self.data.get("firmware")
+        )
+
+        self.async_set_updated_data(data)
+
+        if firmware_changed:
             self.hass.add_job(
                 self.async_update_firmware_version,
                 firmware,
             )
-
-        self.async_set_updated_data(data)
 
         _LOGGER.debug("Brunner data updated: %s", data)
 
@@ -282,27 +322,30 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
     def device_info(self) -> DeviceInfo:
         """Return Brunner device information."""
 
-        device_info_data = {
-            "manufacturer": "BRUNNER",
-            "model": "EAS",
-            "name": "BRUNNER EAS",
-            "identifiers": {(DOMAIN, "coordinator")},
-        }
+        device_info = DeviceInfo(
+            manufacturer="BRUNNER",
+            model="EAS",
+            name="BRUNNER EAS",
+            identifiers={(DOMAIN, "coordinator")},
+        )
 
-        if self.data is not None and self.data.get("firmware") is not None:
-            device_info_data["sw_version"] = self.data["firmware"]
+        if self.data is not None:
+            firmware = self.data.get("firmware")
+
+            if firmware is not None:
+                device_info.sw_version = firmware
 
         discovery_info = self.config_entry.data.get("discovery_info")
 
         if discovery_info and discovery_info.get("macaddress"):
-            device_info_data["connections"] = {
+            device_info.connections = {
                 (
                     CONNECTION_NETWORK_MAC,
                     discovery_info["macaddress"],
                 )
             }
 
-        return DeviceInfo(**device_info_data)
+        return device_info
 
     async def async_update_firmware_version(
         self,
@@ -312,21 +355,12 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
 
         registry = dr.async_get(self.hass)
 
-        device_entry = registry.async_get_device_by_identifier(
-            (DOMAIN, "coordinator"),
-            self.config_entry.entry_id,
-        )
+        device_info = self.device_info()
+        device_info.sw_version = firmware
 
-        if device_entry is None:
-            _LOGGER.debug(
-                "Brunner device not registered yet. "
-                "Skipping firmware registry update."
-            )
-            return
-
-        registry.async_update_device(
-            device_entry.id,
-            sw_version=firmware,
+        registry.async_get_or_create_from_info(
+            config_entry_id=self.config_entry.entry_id,
+            device_info=device_info,
         )
 
     # -------------------------------------------------------------------------
