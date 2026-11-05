@@ -1,6 +1,4 @@
 
-"""Config flow for Brunner EAS integration."""
-
 import logging
 from typing import Any
 
@@ -47,7 +45,7 @@ class BrunnerLocalConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> FlowResult:
         """Handle DHCP discovery."""
 
-        _LOGGER.debug("Brunner DHCP discovery: %s", discovery_info)
+        _LOGGER.debug("BRUNNER DHCP discovery: %s", discovery_info)
 
         # Integration only supports one device
         await self.async_set_unique_id(_DEFAULT_UNIQUE_ID)

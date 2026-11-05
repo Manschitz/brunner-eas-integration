@@ -1,8 +1,9 @@
 
+import logging
 import re
 import socket
-import logging
 import threading
+
 from typing import TypedDict
 
 from homeassistant.config_entries import ConfigEntry
@@ -281,28 +282,27 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
     def device_info(self) -> DeviceInfo:
         """Return Brunner device information."""
 
-        device_info = DeviceInfo(
-            manufacturer="BRUNNER",
-            model="EAS",
-            name="BRUNNER EAS",
-            identifiers={(DOMAIN, "coordinator")},
-            sw_version=(
-                None if self.data is None
-                else self.data.get("firmware")
-            ),
-        )
+        device_info_data = {
+            "manufacturer": "BRUNNER",
+            "model": "EAS",
+            "name": "BRUNNER EAS",
+            "identifiers": {(DOMAIN, "coordinator")},
+        }
+
+        if self.data is not None and self.data.get("firmware") is not None:
+            device_info_data["sw_version"] = self.data["firmware"]
 
         discovery_info = self.config_entry.data.get("discovery_info")
 
         if discovery_info and discovery_info.get("macaddress"):
-            device_info["connections"] = {
+            device_info_data["connections"] = {
                 (
                     CONNECTION_NETWORK_MAC,
                     discovery_info["macaddress"],
                 )
             }
 
-        return device_info
+        return DeviceInfo(**device_info_data)
 
     async def async_update_firmware_version(
         self,
@@ -310,11 +310,11 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
     ) -> None:
         """Update firmware version in the device registry."""
 
-        device_info = self.device_info()
         registry = dr.async_get(self.hass)
 
-        device_entry = registry.async_get_device(
-            identifiers=device_info["identifiers"]
+        device_entry = registry.async_get_device_by_identifier(
+            (DOMAIN, "coordinator"),
+            self.config_entry.entry_id,
         )
 
         if device_entry is None:

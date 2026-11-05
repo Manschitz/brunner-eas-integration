@@ -1,3 +1,4 @@
+
 from .const import DOMAIN, BrunnerCombustionEnum, BrunnerErrorStateEnum, BrunnerLoudnessEnum, BrunnerReloadingIndicationsEnum
 from .coordinator import BrunnerDataUpdateCoordinator
 
@@ -12,12 +13,12 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.const import UnitOfTemperature, PERCENTAGE
 from homeassistant.core import callback
-from homeassistant.helpers.entity import DeviceInfo, Entity
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 # -----------------------------------------------------------------------------
     
-class AbstractBrunnerEntity(CoordinatorEntity, Entity):
+class AbstractBrunnerEntity(CoordinatorEntity):
 
     coordinator: BrunnerDataUpdateCoordinator
     _key = None
@@ -51,15 +52,18 @@ class AbstractBrunnerBinarySensorEntity(AbstractBrunnerEntity, BinarySensorEntit
     
     @property
     def available(self) -> bool:
-        return self._attr_is_on != None
-    
+        return self._attr_is_on is not None
+
     def update_from_coordinator(self) -> bool:
-        if self.coordinator.data == None:
+        if self.coordinator.data is None:
             return False
-        newValue = self.coordinator.data.get(self._key)
-        if newValue != self._attr_is_on:
-            self._attr_is_on = newValue
+
+        new_value = self.coordinator.data.get(self._key)
+
+        if new_value != self._attr_is_on:
+            self._attr_is_on = new_value
             return True
+
         return False
     
 # -----------------------------------------------------------------------------
@@ -68,15 +72,18 @@ class AbstractBrunnerSensorEntity(AbstractBrunnerEntity, SensorEntity):
     
     @property
     def available(self) -> bool:
-        return self.native_value != None
-    
+        return self.native_value is not None
+
     def update_from_coordinator(self) -> bool:
-        if self.coordinator.data == None:
+        if self.coordinator.data is None:
             return False
-        newValue = self.coordinator.data.get(self._key)
-        if newValue != self._attr_native_value:
-            self._attr_native_value = newValue
+
+        new_value = self.coordinator.data.get(self._key)
+
+        if new_value != self._attr_native_value:
+            self._attr_native_value = new_value
             return True
+
         return False
     
 # -----------------------------------------------------------------------------
@@ -96,7 +103,7 @@ class BrunnerDisplayBrightnessSensorEntity(AbstractBrunnerSensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         if self.update_from_coordinator():
-            if self.native_value == None:   self._attr_icon = "mdi:lightbulb-question-outline"
+            if self.native_value is None:   self._attr_icon = "mdi:lightbulb-question-outline"
             elif self.native_value == 0:    self._attr_icon = "mdi:lightbulb-outline"
             elif self.native_value < 10:    self._attr_icon = "mdi:lightbulb-on-outline"
             elif self.native_value < 20:    self._attr_icon = "mdi:lightbulb-on-10"
@@ -181,20 +188,17 @@ class BrunnerReloadingIndicationsSensorEntity(AbstractBrunnerSensorEntity):
     #_attr_name = "Reloading Indications"
     _attr_icon = "mdi:flag-variant-outline"
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options =  [member.name for member in BrunnerReloadingIndicationsEnum]
+    _attr_options = [member.name.lower() for member in BrunnerReloadingIndicationsEnum]
 
     @property
-    def state(self) -> str | None:
-        return self.native_value.name.lower() if self.native_value is not None else None
-    
-    @property
-    def native_value(self) -> BrunnerReloadingIndicationsEnum | None:
-        return self._attr_native_value
+    def native_value(self) -> str | None:
+        value = self._attr_native_value
+        return value.name.lower() if value is not None else None
     
     @callback
     def _handle_coordinator_update(self) -> None:
         if self.update_from_coordinator():
-            match self.native_value:
+            match self._attr_native_value:
                 case BrunnerReloadingIndicationsEnum.OFF:                           self._attr_icon = "mdi:flag-variant-off-outline"
                 case BrunnerReloadingIndicationsEnum.SYMBOLS:                       self._attr_icon = "mdi:flag-variant"
                 case BrunnerReloadingIndicationsEnum.SYMBOLS_AND_BEEPS:             self._attr_icon = "mdi:bell-ring"
@@ -212,12 +216,18 @@ class BrunnerReloadingNoteSensorEntity(AbstractBrunnerBinarySensorEntity):
     _attr_icon = "mdi:hand-back-right-off-outline"
 
     def update_from_coordinator(self) -> bool:
-        if self.coordinator.data == None:
+        if self.coordinator.data is None:
             return False
-        newValue = (self.coordinator.data.get("flag_reload_start") and not self.coordinator.data.get("flag_reload_end"))
-        if newValue != self._attr_is_on:
-            self._attr_is_on = newValue
+
+        new_value = (
+            self.coordinator.data.get("flag_reload_start")
+            and not self.coordinator.data.get("flag_reload_end")
+        )
+
+        if new_value != self._attr_is_on:
+            self._attr_is_on = new_value
             return True
+
         return False
 
     @callback
@@ -250,7 +260,7 @@ class BrunnerTemperatureSensorEntity(AbstractBrunnerSensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         if self.update_from_coordinator():
-            if self.native_value == None:   self._attr_icon = "mdi:thermometer-off"
+            if self.native_value is None:   self._attr_icon = "mdi:thermometer-off"
             elif self.native_value < 60:    self._attr_icon = "mdi:thermometer-low"
             elif self.native_value < 160:   self._attr_icon = "mdi:thermometer"
             elif self.native_value < 300:   self._attr_icon = "mdi:thermometer-high"
@@ -266,21 +276,17 @@ class BrunnerCombustionSensorEntity(AbstractBrunnerSensorEntity):
     #_attr_name = "Combustion"
     _attr_icon = "mdi:help-circle-outline"
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options =  [member.name for member in BrunnerCombustionEnum]
+    _attr_options = [member.name.lower() for member in BrunnerCombustionEnum]
 
     @property
-    def state(self) -> str | None:
-        return self.native_value.name.lower() if self.native_value is not None else None
-
-    
-    @property
-    def native_value(self) -> BrunnerCombustionEnum | None:
-        return self._attr_native_value
+    def native_value(self) -> str | None:
+        value = self._attr_native_value
+        return value.name.lower() if value is not None else None
     
     @callback
     def _handle_coordinator_update(self) -> None:
         if self.update_from_coordinator():
-            match self.native_value:
+            match self._attr_native_value:
                 case BrunnerCombustionEnum.UNKNOWN:     self._attr_icon = "mdi:help-circle-outline"
                 case BrunnerCombustionEnum.DOOR_OPEN:   self._attr_icon = "mdi:door-open"
                 case BrunnerCombustionEnum.STAGE1:      self._attr_icon = "mdi:circle-slice-1"
@@ -301,20 +307,17 @@ class BrunnerErrorSensorEntity(AbstractBrunnerSensorEntity):
     #_attr_name = "Error State"
     _attr_icon = "mdi:alert-circle-check-outline"
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options =  [member.name for member in BrunnerErrorStateEnum]
+    _attr_options = [member.name.lower() for member in BrunnerErrorStateEnum]
 
     @property
-    def state(self) -> str | None:
-        return self.native_value.name.lower() if self.native_value is not None else None
-    
-    @property
-    def native_value(self) -> BrunnerErrorStateEnum | None:
-        return self._attr_native_value
+    def native_value(self) -> str | None:
+        value = self._attr_native_value
+        return value.name.lower() if value is not None else None
     
     @callback
     def _handle_coordinator_update(self) -> None:
         if self.update_from_coordinator():
-            match self.native_value:
+            match self._attr_native_value:
                 case BrunnerErrorStateEnum.UNKNOWN: self._attr_icon = "mdi:help"
                 case BrunnerErrorStateEnum.NONE:    self._attr_icon = "mdi:alert-circle-check-outline"
                 case _:                             self._attr_icon = "mdi:alert-decagram"
@@ -328,20 +331,17 @@ class BrunnerLoudnessSensorEntity(AbstractBrunnerSensorEntity):
     #_attr_name = "Tone Loudness"
     _attr_icon = "mdi:volume-variant-off"
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options =  [member.name for member in BrunnerLoudnessEnum]
+    _attr_options = [member.name.lower() for member in BrunnerLoudnessEnum]
 
     @property
-    def state(self) -> str | None:
-        return self.native_value.name.lower() if self.native_value is not None else None
-    
-    @property
-    def native_value(self) -> BrunnerLoudnessEnum | None:
-        return self._attr_native_value
+    def native_value(self) -> str | None:
+        value = self._attr_native_value
+        return value.name.lower() if value is not None else None
     
     @callback
     def _handle_coordinator_update(self) -> None:
         if self.update_from_coordinator():
-            match self.native_value:
+            match self._attr_native_value:
                 case BrunnerLoudnessEnum.SILENT:    self._attr_icon = "mdi:volume-variant-off"
                 case BrunnerLoudnessEnum.MEDIUM:    self._attr_icon = "mdi:volume-medium"
                 case BrunnerLoudnessEnum.LOUD:      self._attr_icon = "mdi:volume-high"
@@ -356,10 +356,6 @@ class BrunnerIPAddressSensorEntity(AbstractBrunnerSensorEntity):
     #_attr_name = "IP Address"
     _attr_icon = "mdi:wifi"
 
-    @property
-    def state(self) -> str | None:
-        return self.native_value
-    
     @property
     def native_value(self) -> str | None:
         return self._attr_native_value
