@@ -16,6 +16,10 @@
       "dhcp": {
         "data": {},
         "description": "Your EAS3 device should be discovered automatically if it is on the same local network as Home Assistant."
+      },
+      "confirm": {
+        "title": "Combustion control discovered",
+        "description": "A BRUNNER EAS3 device was discovered at {ip}. Do you want to add it?"
       }
     }
   }

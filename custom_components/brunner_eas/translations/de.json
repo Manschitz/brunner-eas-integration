@@ -12,6 +12,10 @@
       "dhcp": {
         "data": {},
         "description": "Die EAS3 sollte automatisch erkannt werden, sofern das Gerät sich im gleichen lokalen Netzwerk wie Home Assistant befindet."
+      },
+      "confirm": {
+        "title": "Abbrandsteuerung gefunden",
+        "description": "Eine BRUNNER EAS3 wurde entdeckt mit IP {ip}. Jetzt hinzufügen?"
       }
     }
   },
