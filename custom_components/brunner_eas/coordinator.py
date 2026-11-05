@@ -5,7 +5,8 @@ from typing import TypedDict
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo, DeviceEntry, CONNECTION_NETWORK_MAC
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers.device_registry import DeviceInfo, CONNECTION_NETWORK_MAC
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
 
 from .const import DOMAIN, BrunnerCombustionEnum, BrunnerErrorStateEnum, BrunnerLoudnessEnum, BrunnerReloadingIndicationsEnum
@@ -162,10 +163,25 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
         return device_info
     
     async def async_update_firmware_version(self, firmware: str) -> None:
-        device_info: DeviceInfo = self.device_info()
-        device_entry: DeviceEntry = self.hass.data['device_registry'].async_get_device(device_info.get("identifiers"))
-        #self.logger.debug(device_entry)
-        self.hass.data['device_registry'].async_update_device(device_entry.id, sw_version=firmware)
+
+        device_info = self.device_info()
+        registry = dr.async_get(self.hass)
+
+        device_entry = registry.async_get_device(
+            identifiers=device_info["identifiers"]
+        )
+
+        if device_entry is None:
+            _LOGGER.debug(
+                "Brunner device not registered yet. "
+                "Skipping firmware registry update."
+            )
+            return
+
+        registry.async_update_device(
+            device_entry.id,
+            sw_version=firmware,
+        )
     
     def version_to_major_minor(self, version: str) -> str:
         # Extract the first digit as the major version and the following two digits as the minor version
