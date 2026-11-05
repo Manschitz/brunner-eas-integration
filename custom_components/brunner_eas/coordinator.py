@@ -140,14 +140,26 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
         self.logger.debug(data)
 
     def device_info(self) -> DeviceInfo:
-        return DeviceInfo(
+
+        device_info = DeviceInfo(
             manufacturer = "BRUNNER",
             model = "EAS",
             name = "BRUNNER EAS",
-            connections = None if self.config_entry.data.get("discovery_info") == None else {(CONNECTION_NETWORK_MAC, self.config_entry.data.get("discovery_info")["macaddress"])},
             identifiers = {(DOMAIN, "coordinator")},
-            sw_version = None if self.data == None else self.data.get("firmware")
+            sw_version = None if self.data is None else self.data.get("firmware"),
         )
+
+        discovery_info = self.config_entry.data.get("discovery_info")
+
+        if discovery_info and discovery_info.get("macaddress"):
+            device_info["connections"] = {
+                (
+                    CONNECTION_NETWORK_MAC,
+                    discovery_info["macaddress"],
+                )
+            }
+
+        return device_info
     
     async def async_update_firmware_version(self, firmware: str) -> None:
         device_info: DeviceInfo = self.device_info()
