@@ -255,15 +255,13 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
             "flag_reload_end": flag_reload_end,
         }
 
-        firmware_changed = firmware != self._last_firmware
-
         self._reset_timeout()
         self.is_receiving = True
         self.async_set_updated_data(data)
 
-        if firmware_changed:
-            self.update_firmware_version(firmware)
-            self._last_firmware = firmware
+        if firmware != self._last_firmware:
+            if self.update_firmware_version(firmware):
+                self._last_firmware = firmware
 
         _LOGGER.debug("BRUNNER data updated: %s", data)
 
@@ -297,19 +295,25 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
             }
         return info
 
-    def update_firmware_version(self, firmware: str) -> None:
-        """Synchronously update firmware in the device registry on the HA loop."""
+    def update_firmware_version(self, firmware: str) -> bool:
+        """Update firmware on the registered BRUNNER device."""
 
-        info = self.device_info()
-        dr.async_get(self.hass).async_get_or_create(
-            config_entry_id=self.config_entry.entry_id,
-            identifiers=info["identifiers"],
-            connections=info.get("connections"),
-            manufacturer=info["manufacturer"],
-            model=info["model"],
-            name=info["name"],
-            sw_version=firmware,
+        registry = dr.async_get(self.hass)
+
+        device = registry.async_get_device(
+            identifiers={(DOMAIN, "coordinator")}
         )
+
+        if device is None:
+            return False
+
+        if device.sw_version != firmware:
+            registry.async_update_device(
+                device.id,
+                sw_version=firmware,
+            )
+
+        return True
 
     # -------------------------------------------------------------------------
     # Firmware version helper
