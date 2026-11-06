@@ -23,5 +23,10 @@
         "description": "A BRUNNER EAS3 device was discovered at {ip}. Do you want to add it?"
       }
     }
+  },
+  "device": {
+    "combustion_control": {
+      "name": "Combustion Control"
+    }
   }
 }

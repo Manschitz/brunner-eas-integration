@@ -20,6 +20,11 @@
       }
     }
   },
+  "device": {
+    "combustion_control": {
+      "name": "Combustion Control"
+    }
+  },
   "entity": {
     "binary_sensor": {
       "door": {

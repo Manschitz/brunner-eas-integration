@@ -283,7 +283,8 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
         info: DeviceInfo = {
             "manufacturer": "BRUNNER",
             "model": "EAS",
-            "name": "BRUNNER EAS",
+            "name": "Combustion Control",
+            "translation_key": "combustion_control",
             "identifiers": {(DOMAIN, "coordinator")},
         }
         if self.data and self.data.get("firmware"):

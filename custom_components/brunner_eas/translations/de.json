@@ -20,6 +20,11 @@
       }
     }
   },
+  "device": {
+    "combustion_control": {
+      "name": "Abbrandsteuerung"
+    }
+  },
   "entity": {
     "binary_sensor": {
       "door": {
