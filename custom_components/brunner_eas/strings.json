@@ -12,15 +12,15 @@
     "step": {
       "user": {
         "data": {},
-        "description": "This custom integration adds support for BRUNNER combustion control (Elektronische Abbrandsteuerung EAS 3) to Home Assistant."
+        "description": "This custom integration adds support for the BRUNNER Electronic Combustion Control (Elektronische Abbrandsteuerung EAS 3) to Home Assistant."
       },
       "dhcp": {
         "data": {},
-        "description": "Your EAS3 device should be discovered automatically if it is on the same local network as Home Assistant."
+        "description": "Your device should be discovered automatically when connected to the same local network as Home Assistant."
       },
       "confirm": {
         "title": "Combustion control discovered",
-        "description": "A BRUNNER EAS3 device was discovered at {ip}. Do you want to add it?"
+        "description": "Device found with IP address {ip}. Would you like to add it?"
       }
     }
   },
