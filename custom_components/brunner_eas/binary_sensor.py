@@ -19,7 +19,7 @@ async def async_setup_entry(
     entry: ConfigEntry[BrunnerDataUpdateCoordinator],
     async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
-    """Set up Brunner EAS sensors."""
+    """Set up BRUNNER EAS sensors."""
 
     coordinator = entry.runtime_data
 

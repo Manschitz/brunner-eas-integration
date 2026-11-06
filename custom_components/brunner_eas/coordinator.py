@@ -85,11 +85,11 @@ class _BrunnerUDPProtocol(asyncio.DatagramProtocol):
             self.coordinator._warn_invalid(f"Malformed BRUNNER UDP packet: {type(exc).__name__}")
 
     def error_received(self, exc: Exception) -> None:
-        _LOGGER.warning("Brunner UDP transport error: %s", exc)
+        _LOGGER.warning("BRUNNER UDP transport error: %s", exc)
 
 
 class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
-    """Coordinator for Brunner EAS local UDP broadcasts."""
+    """Coordinator for BRUNNER EAS local UDP broadcasts."""
 
     # A stopped transmitter should not leave the last measured temperature live.
     PACKET_TIMEOUT_SECONDS = 180
@@ -127,7 +127,7 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
             raise
         self._transport = transport
         self._reset_timeout()
-        _LOGGER.debug("Started Brunner UDP listener on port 45454")
+        _LOGGER.debug("Started BRUNNER UDP listener on port 45454")
 
     def _reset_timeout(self) -> None:
         if self._timeout_handle is not None:
@@ -141,7 +141,7 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
         if self._stopped:
             return
         _LOGGER.warning(
-            "No valid Brunner EAS packet received for %s seconds; marking entities unavailable",
+            "No valid BRUNNER EAS packet received for %s seconds; marking entities unavailable",
             self.PACKET_TIMEOUT_SECONDS,
         )
         self.is_receiving = False
@@ -159,7 +159,7 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
             self._transport.close()
             self._transport = None
         self.async_update_listeners()
-        _LOGGER.debug("Stopped Brunner UDP listener")
+        _LOGGER.debug("Stopped BRUNNER UDP listener")
 
     # -------------------------------------------------------------------------
     # UDP data processing
@@ -169,7 +169,7 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
         response_message: str,
         address: tuple[str, int],
     ) -> None:
-        """Process received Brunner UDP data."""
+        """Process received BRUNNER UDP data."""
 
         if self._stopped:
             return
@@ -194,7 +194,7 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
                 int(match.group("error"))
             )
         except (ValueError, TypeError):
-            _LOGGER.warning("Unknown Brunner error state")
+            _LOGGER.warning("Unknown BRUNNER error state")
             error_state = BrunnerErrorStateEnum.UNKNOWN
 
         try:
@@ -265,7 +265,7 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
             self.update_firmware_version(firmware)
             self._last_firmware = firmware
 
-        _LOGGER.debug("Brunner data updated: %s", data)
+        _LOGGER.debug("BRUNNER data updated: %s", data)
 
     # -------------------------------------------------------------------------
     # Home Assistant device registry
@@ -278,7 +278,7 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
             self._last_invalid_log = now
 
     def device_info(self) -> DeviceInfo:
-        """Return Brunner device information."""
+        """Return BRUNNER device information."""
 
         info: DeviceInfo = {
             "manufacturer": "BRUNNER",
