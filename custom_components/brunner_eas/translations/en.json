@@ -1,6 +1,7 @@
 {
-  "title": "BRUNNER Combustion Control",
+  "title": "Combustion Control",
   "config": {
+    "flow_title": "Combustion Control",
     "abort": {
       "already_configured": "The integration has already been configured."
     },

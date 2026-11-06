@@ -1,6 +1,7 @@
 {
-  "title": "BRUNNER Abbrandsteuerung",
+  "title": "Abbrandsteuerung",
   "config": {
+    "flow_title": "Abbrandsteuerung",
     "abort": {
       "already_configured": "Die Integration ist bereits konfiguriert."
     },

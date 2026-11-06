@@ -1,5 +1,6 @@
 {
   "config": {
+    "flow_title": "Combustion Control",
     "error": {
       "cannot_connect": "[%key:common::config_flow::error::cannot_connect%]"
     },

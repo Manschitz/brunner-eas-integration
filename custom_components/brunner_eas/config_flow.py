@@ -44,6 +44,10 @@ class BrunnerLocalConfigFlow(ConfigFlow, domain=DOMAIN):
     ) -> ConfigFlowResult:
         """Handle DHCP discovery."""
 
+        self.context["title_placeholders"] = {
+            "name": "BRUNNER EAS"
+        }
+
         mac_address = format_mac(discovery_info.macaddress)
 
         _LOGGER.debug(
