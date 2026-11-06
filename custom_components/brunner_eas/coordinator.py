@@ -88,6 +88,9 @@ class _BrunnerUDPProtocol(asyncio.DatagramProtocol):
         _LOGGER.warning("BRUNNER UDP transport error: %s", exc)
 
 
+# -----------------------------------------------------------------------------
+
+
 class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
     """Coordinator for BRUNNER EAS local UDP broadcasts."""
 
@@ -300,8 +303,8 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
 
         registry = dr.async_get(self.hass)
 
-        device = registry.async_get_device(
-            identifiers={(DOMAIN, "coordinator")}
+        device = registry.async_get_device_by_identifier(
+            (DOMAIN, "coordinator")
         )
 
         if device is None:
