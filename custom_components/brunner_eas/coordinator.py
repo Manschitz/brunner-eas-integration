@@ -304,7 +304,8 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
         registry = dr.async_get(self.hass)
 
         device = registry.async_get_device_by_identifier(
-            (DOMAIN, "coordinator")
+            (DOMAIN, "coordinator"),
+            self.config_entry.entry_id,
         )
 
         if device is None:
