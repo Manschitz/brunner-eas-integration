@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.2.0] - Unreleased
+## [1.2.0] - 2026-11-14
 
 - Refactored the integration for better compatibility with Home Assistant 2026.11 and future releases
 - Replaced the threaded UDP listener with asynchronous UDP communication
