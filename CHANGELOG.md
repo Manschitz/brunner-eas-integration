@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.2.1] - 2026-11-16
+
+- Fixed UDP port sharing with other applications (e.g., Node-RED)
+
 ## [1.2.0] - 2026-11-14
 
 - Refactored the integration for better compatibility with Home Assistant 2026.11 and future releases
