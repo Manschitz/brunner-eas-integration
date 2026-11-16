@@ -2,6 +2,7 @@
 import asyncio
 import logging
 import re
+import socket
 
 from typing import TypedDict
 
@@ -112,21 +113,53 @@ class BrunnerDataUpdateCoordinator(DataUpdateCoordinator[BrunnerDataDict]):
         """Push-based coordinator: no network polling is necessary."""
         return self.data if self.data is not None else {}
 
+    @staticmethod
+    def _create_shared_udp_socket() -> socket.socket:
+        """Bind a non-blocking UDP socket that can share EAS broadcasts.
+
+        asyncio's ``local_addr`` creates a socket without SO_REUSEADDR.  On
+        Linux that prevents other listeners (such as Node-RED) from binding
+        the same broadcast port.  Configure the options *before* binding and
+        hand the socket to asyncio instead.
+        """
+        udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            if hasattr(socket, "SO_REUSEPORT"):
+                try:
+                    udp_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                except OSError as exc:
+                    # Not all OSes/kernels permit SO_REUSEPORT. SO_REUSEADDR
+                    # still enables sharing with similarly configured peers.
+                    _LOGGER.debug("SO_REUSEPORT unavailable for BRUNNER UDP: %s", exc)
+            udp_socket.bind(("0.0.0.0", 45454))
+            udp_socket.setblocking(False)
+        except Exception:
+            udp_socket.close()
+            raise
+        return udp_socket
+
     async def async_start_receiving(self) -> None:
-        """Bind UDP without blocking the event loop."""
+        """Start an asyncio listener using a shareable UDP socket."""
         if self._transport is not None:
             return
         self._stopped = False
+        udp_socket: socket.socket | None = None
         try:
+            udp_socket = self._create_shared_udp_socket()
             transport, _ = await self.hass.loop.create_datagram_endpoint(
                 lambda: _BrunnerUDPProtocol(self),
-                local_addr=("0.0.0.0", 45454),
+                sock=udp_socket,
             )
         except OSError as exc:
             self._stopped = True
+            if udp_socket is not None:
+                udp_socket.close()
             raise ConfigEntryNotReady(f"Unable to bind BRUNNER UDP port 45454: {exc}") from exc
         except Exception:
             self._stopped = True
+            if udp_socket is not None:
+                udp_socket.close()
             raise
         self._transport = transport
         self._reset_timeout()
